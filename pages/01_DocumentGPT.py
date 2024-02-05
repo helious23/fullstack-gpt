@@ -1,7 +1,10 @@
-from langchain.callbacks import StreamingStdOutCallbackHandler
+from typing import Any, Dict, List, Optional, Union
+from uuid import UUID
+from langchain.callbacks.base import BaseCallbackHandler
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.embeddings import CacheBackedEmbeddings, OpenAIEmbeddings
 from langchain.prompts import ChatPromptTemplate
+from langchain.schema.output import ChatGenerationChunk, GenerationChunk
 from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain.storage import LocalFileStore
 from langchain.text_splitter import CharacterTextSplitter
@@ -15,11 +18,27 @@ st.set_page_config(
     page_icon="🗒️",
 )
 
+
+class ChatCallbackHandler(BaseCallbackHandler):
+
+    message = ""
+
+    def on_llm_start(self, *arg, **kwargs):
+        self.message_box = st.empty()
+
+    def on_llm_end(self, *arg, **kwargs):
+        save_message(self.message, "ai")
+
+    def on_llm_new_token(self, token, *args, **kwargs):
+        self.message += token
+        self.message_box.markdown(self.message)
+
+
 llm = ChatOpenAI(
     temperature=0.1,
     streaming=True,
     callbacks=[
-        StreamingStdOutCallbackHandler(),
+        ChatCallbackHandler(),
     ],
 )
 
@@ -45,11 +64,15 @@ def embed_file(file):
     return retriever
 
 
+def save_message(message, role):
+    st.session_state["messages"].append({"message": message, "role": role})
+
+
 def send_message(message, role, save=True):
     with st.chat_message(role):
         st.markdown(message)
     if save:
-        st.session_state["messages"].append({"message": message, "role": role})
+        save_message(message, role)
 
 
 def paint_history():
@@ -97,9 +120,9 @@ with st.sidebar:
 
 if file:
     retriever = embed_file(file)
-    send_message("I'm ready! Ask away!", "ai", save=False)
+    send_message("준비가 다 되었습니다. 궁금하신 점을 질문하세요 :)", "ai", save=False)
     paint_history()
-    message = st.chat_input("Ask anything about your file...")
+    message = st.chat_input("첨부하신 파일에 대해 궁금하신 점을 입력하세요!")
     if message:
         send_message(message, "human")
 
@@ -111,8 +134,8 @@ if file:
             | prompt
             | llm
         )
-        response = chain.invoke(message)
-        send_message(response.content, "ai")
+        with st.chat_message("ai"):
+            response = chain.invoke(message)
 
 
 else:
