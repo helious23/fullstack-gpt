@@ -1,8 +1,7 @@
-from typing import Any, Dict, List, Optional, Union
-from uuid import UUID
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.embeddings import CacheBackedEmbeddings, OpenAIEmbeddings
+from langchain.memory import ConversationSummaryBufferMemory
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output import ChatGenerationChunk, GenerationChunk
 from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
@@ -10,7 +9,6 @@ from langchain.storage import LocalFileStore
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores.faiss import FAISS
 from langchain.chat_models import ChatOpenAI
-
 import streamlit as st
 
 st.set_page_config(
@@ -20,7 +18,6 @@ st.set_page_config(
 
 
 class ChatCallbackHandler(BaseCallbackHandler):
-
     message = ""
 
     def on_llm_start(self, *arg, **kwargs):
