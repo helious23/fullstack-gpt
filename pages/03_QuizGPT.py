@@ -1,3 +1,4 @@
+import json
 from langchain.callbacks import StdOutCallbackHandler
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import UnstructuredFileLoader
@@ -6,6 +7,16 @@ from langchain.retrievers import WikipediaRetriever
 from langchain.schema.runnable import RunnableLambda
 from langchain.text_splitter import CharacterTextSplitter
 import streamlit as st
+from langchain.schema import BaseOutputParser
+
+
+class JsonOutputParser(BaseOutputParser):
+    def parse(self, text):
+        text = text.replace("```", "").replace("json", "")
+        return json.loads(text)
+
+
+output_parser = JsonOutputParser()
 
 st.set_page_config(
     page_title="QuizGPT",
@@ -87,12 +98,11 @@ formatting_prompt = ChatPromptTemplate.from_messages(
                 
                 질문: 영화 Avatar 의 출시연도는 언제인가요?
                 보기: 2007년 | 2001년 | 2009년(o) | 1998년
-                
+
                 질문: Julius Ceasar 는 누구일까요?
                 보기: 로마의 황제(o) | 화가 | 배우 | 모델
                 
                 #예시Output
-                
                 ```json
                 {{ "questions": [
                         {{
@@ -231,11 +241,12 @@ with st.sidebar:
         topic = st.text_input("Search Wikipedia...")
         if topic:
             retriever = WikipediaRetriever(
-                top_k_results=10,
+                top_k_results=3,
                 lang="ko",
             )
             with st.status("Searching Wikipedia..."):
                 docs = retriever.get_relevant_documents(topic)
+
 
 if not docs:
     st.markdown(
@@ -252,9 +263,6 @@ else:
     start = st.button("퀴즈 만들기")
 
     if start:
-        questions_response = questions_chain.invoke(docs)
-        st.write(questions_response.content)
-        formatting_response = formatting_chain.invoke(
-            {"context": questions_response.content}
-        )
-        st.write(formatting_response.content)
+        chain = {"context": questions_chain} | formatting_chain | output_parser
+        response = chain.invoke(docs)
+        st.write(response)
