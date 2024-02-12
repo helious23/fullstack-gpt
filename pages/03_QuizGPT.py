@@ -1,12 +1,11 @@
+import streamlit as st
 import json
 from langchain.callbacks import StdOutCallbackHandler
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.prompts import ChatPromptTemplate
 from langchain.retrievers import WikipediaRetriever
-from langchain.schema.runnable import RunnableLambda
 from langchain.text_splitter import CharacterTextSplitter
-import streamlit as st
 from langchain.schema import BaseOutputParser
 
 
@@ -86,7 +85,6 @@ formatting_prompt = ChatPromptTemplate.from_messages(
                 #명령문
                 당신은 강력한 formatting 알고리즘 입니다.
                 당신은 #예시질문 을 JSON format 으로 변환합니다.
-                Answers with (o) are the correct ones.
                 (o) 표시가 되어 있는 것이 정답입니다.
                 
                 #예시질문
@@ -220,6 +218,21 @@ def split_file(file):
     return docs
 
 
+@st.cache_data(show_spinner="Making Quiz...")
+def run_quiz_chain(_docs, topic):
+    chain = {"context": questions_chain} | formatting_chain | output_parser
+    return chain.invoke(_docs)
+
+
+@st.cache_data(show_spinner="Search Wikipedia...")
+def wiki_search(term):
+    retriever = WikipediaRetriever(
+        top_k_results=3,
+        lang="ko",
+    )
+    return retriever.get_relevant_documents(term)
+
+
 with st.sidebar:
     docs = None
     choice = st.selectbox(
@@ -238,14 +251,9 @@ with st.sidebar:
         if file:
             docs = split_file(file)
     else:
-        topic = st.text_input("Search Wikipedia...")
+        topic = st.text_input("")
         if topic:
-            retriever = WikipediaRetriever(
-                top_k_results=3,
-                lang="ko",
-            )
-            with st.status("Searching Wikipedia..."):
-                docs = retriever.get_relevant_documents(topic)
+            docs = wiki_search(topic)
 
 
 if not docs:
@@ -259,10 +267,7 @@ if not docs:
     """
     )
 else:
-
     start = st.button("퀴즈 만들기")
-
     if start:
-        chain = {"context": questions_chain} | formatting_chain | output_parser
-        response = chain.invoke(docs)
+        response = run_quiz_chain(docs, topic if topic else file.name)
         st.write(response)
