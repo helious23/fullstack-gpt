@@ -1,4 +1,5 @@
 import streamlit as st
+import numpy as np
 import json
 from langchain.callbacks import StdOutCallbackHandler
 from langchain.chat_models import ChatOpenAI
@@ -11,7 +12,12 @@ from langchain.schema import BaseOutputParser
 
 class JsonOutputParser(BaseOutputParser):
     def parse(self, text):
-        text = text.replace("```", "").replace("json", "")
+        text = (
+            text.replace("```", "")
+            .replace("json", "")
+            .replace(", ]", "]")
+            .replace(", }", "}")
+        )
         return json.loads(text)
 
 
@@ -224,7 +230,7 @@ def run_quiz_chain(_docs, topic):
     return chain.invoke(_docs)
 
 
-@st.cache_data(show_spinner="Search Wikipedia...")
+@st.cache_data(show_spinner="Searching Wikipedia...")
 def wiki_search(term):
     retriever = WikipediaRetriever(
         top_k_results=3,
@@ -235,6 +241,7 @@ def wiki_search(term):
 
 with st.sidebar:
     docs = None
+    topic = None
     choice = st.selectbox(
         "Choose what you want to use.",
         (
@@ -267,7 +274,35 @@ if not docs:
     """
     )
 else:
-    start = st.button("퀴즈 만들기")
-    if start:
-        response = run_quiz_chain(docs, topic if topic else file.name)
-        st.write(response)
+    response = run_quiz_chain(docs, topic if topic else file.name)
+    st.write(response)
+    with st.form("questions_form"):
+        for num, question in enumerate(response["questions"]):
+            st.write(f"{num + 1}. {question['question']}")
+            value = st.radio(
+                label="정답을 고르세요",
+                options=[answer["answer"] for answer in question["answers"]],
+                index=None,
+                key=num,
+            )
+            if value:
+                if {"answer": value, "correct": True} in question["answers"]:
+                    st.success("정답입니다! 🎉")
+                else:
+                    correct_answer = list(
+                        filter(
+                            lambda answer: answer["correct"] == True,
+                            question["answers"],
+                        )
+                    )
+                    st.error(
+                        f"오답입니다 😱 \n\n 정답은 '{correct_answer[0]['answer']}' 입니다!"
+                    )
+
+                    for answer in question["answers"]:
+                        if answer["correct"] == True:
+                            st.error(
+                                f"오답입니다 😱 \n\n 정답은 '{answer['answer']}' 입니다!"
+                            )
+
+        button = st.form_submit_button(label="제출하기")
