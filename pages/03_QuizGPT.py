@@ -1,5 +1,4 @@
 import streamlit as st
-import numpy as np
 import json
 from langchain.callbacks import StdOutCallbackHandler
 from langchain.chat_models import ChatOpenAI
@@ -275,7 +274,6 @@ if not docs:
     )
 else:
     response = run_quiz_chain(docs, topic if topic else file.name)
-    st.write(response)
     with st.form("questions_form"):
         for num, question in enumerate(response["questions"]):
             st.write(f"{num + 1}. {question['question']}")
