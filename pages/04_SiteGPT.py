@@ -2,6 +2,7 @@ from langchain.document_loaders import AsyncChromiumLoader, SitemapLoader
 from langchain.document_transformers import Html2TextTransformer
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import streamlit as st
+import html2text
 
 
 def parse_page(soup):
@@ -62,16 +63,20 @@ with st.sidebar:
         placeholder="https://example.com/sitemap.xml",
     )
 
-# if url:
-#     loader = AsyncChromiumLoader([url])
-#     docs = loader.load()
-#     html2text_tramsformer.transform_documents(docs)
-#     st.markdown(docs)
-
 if url:
-    if ".xml" not in url:
-        with st.sidebar:
-            st.error("Sitemap URL 을 적어주세요")
-    else:
-        docs = load_website(url)
-        st.write(docs)
+    loader = AsyncChromiumLoader([url])
+    docs = loader.load()
+    st.write(docs)
+    html2text_tramsformer.transform_documents(docs)
+    text_maker = html2text.HTML2Text()
+    text = text_maker.handle(docs[0].page_content)
+    st.write(text)
+
+
+# if url:
+#     if ".xml" not in url:
+#         with st.sidebar:
+#             st.error("Sitemap URL 을 적어주세요")
+#     else:
+#         docs = load_website(url)
+#         st.write(docs)
