@@ -89,7 +89,9 @@ choose_prompt = ChatPromptTemplate.from_messages(
             제공되는 [answers] 만을 사용하여 대답을 하여야 합니다.
             
             #제약조건
-            제공되는 [answers] 중 높은 점수를 가진 항목과 가장 최근의 항목을 사용하여 대답하세요.
+            제공되는 [answers] 중 높은 점수를 가진 항목과 가장 최근 [Date] 항목을 사용하여 대답하세요.
+            가장 최근의 항목보다 점수가 높은 항목을 우선 사용하여 대답하세요.
+            제공되는 [answers] 의 점수가 같은 항목이 있다면, 최근의 항목만 사용하여 대답하세요.
             제공되는 [answers] 의 source 를 함께 보여주세요.
             
             시작하세요!
@@ -110,7 +112,6 @@ def choose_answer(inputs):
         f"{answer['answer']} \n Source:{answer['source']} \n Date:{answer['date']}\n"
         for answer in answers
     )
-
     return choose_chain.invoke(
         {
             "question": question,
